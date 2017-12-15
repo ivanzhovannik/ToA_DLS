@@ -19,7 +19,7 @@ j = 1; % there was one
 TauRaw = zeros([1 TauRawLim]);
 N = dTauMinNs/dATminNs; % must be an integer value
 TauRaw(1) = N;
-TmaxDivN = Tmax/10;%/N;
+TmaxDivN = Tmax/N;
 while (TauRaw(j) < TmaxDivN) % Tau & Tmax have different sampling system!!!
 j = j+1;
 TauRaw(j) = TauRaw(j-1)+N*2^floor((j-1)/B);
