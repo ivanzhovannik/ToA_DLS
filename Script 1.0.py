@@ -66,8 +66,8 @@ for i in range(1, num_of_samples + 1): # for each of the samples
     ACF_[i] = oc.TTTCU(data[i]['ToA'].as_matrix(), dToA, dN) # execute
     ACF[i] = np.c_[ACF_[i][:ACF_[i].shape[0] // 2, 0], ACF_[i][ACF_[i].shape[0] // 2:, 0]]
     
-    # cut the values with lag times less than 500 ns
-    ACF_cut[i] = ACF[i][np.where(ACF[i][:, 0] > 1000)]
+    # cut the values with lag times less than 3000 ns
+    ACF_cut[i] = ACF[i][np.where(ACF[i][:, 0] > 3000)]
     
     # filter the curves with SavGol filter
     ACF_fil[i] = np.c_[ACF_cut[i][:, 0], ACF_cut[i][:, 1]] # sgf(ACF_cut[i][:, 1], 35, 5)]
