@@ -3,6 +3,7 @@ that is a test file for the TTTCU algorithm
 '''
 import numpy as np
 import matplotlib.pyplot as plt
+from tkinter import Tk, filedialog # dialog windows
 
 
 def GenerateLagTimeVect(Tmax, B = 2, lag_time_min = 3e3, ToA_st = 1):
@@ -56,3 +57,23 @@ def TTTCU(dToA, ToA_st = 1, lag_time_min = 3e3):
         ToA_shifted = ToA + tau
         ACF[i] = 1 - 0.5 * len(np.unique(np.r_[ToA, ToA_shifted]))
     return np.c_[tauVect, ACF]
+
+
+def ToA2ACF():
+    '''
+    This function takes several ToA files customly chosen from a folder and
+    transforms them to ACF via TTTCU algorithm, cuts the ACFs' baselines, and
+    averages them (with possible filtration)
+    
+    Importantly, ToAs should be stored in a txt file WITHOUT any header.
+    
+    Savitzki-Golay filter parameters should be stored in a dictionary as
+    follows:
+        {'poly': polynomial_order, 'window': window_size}
+    '''
+    
+    root = Tk()
+    root.fileNames = filedialog.askopenfilename(("ToA text files", ".txt"))
+    
+    print(root.fileNames)
+    return 1
