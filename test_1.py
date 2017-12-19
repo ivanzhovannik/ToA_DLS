@@ -13,7 +13,7 @@ def GenerateLagTimeVect(Tmax, B = 2, lag_time_min = 3e3, ToA_st = 1):
     '''
     
     tau_ind_lim = 500 # limit the index
-    tauRaw = np.zeros((500,))
+    tauRaw = np.zeros((tau_ind_lim,))
     N = lag_time_min / ToA_st
     tauRaw[0] = N
     j = 0 # the while loop index
@@ -44,5 +44,15 @@ def TTTCU(dToA, ToA_st = 1, lag_time_min = 3e3):
     for i, elem in enumerate(dToA):
         calc += elem
         ToA[i] = calc
-    tauVect = 
-    return 1
+    tauVect = GenerateLagTimeVect(ToA[-1],
+                                  lag_time_min=lag_time_min,
+                                  ToA_st=ToA_st)
+    
+    # initialize a vector for the correlation function
+    ACF = np.zeros(tauVect.shape)
+    
+    # calculate the ACF for each of the lag times
+    for i, tau in enumerate(tauVect):
+        ToA_shifted = ToA + tau
+        ACF[i] = 1 - 0.5 * len(np.unique(np.r_[ToA, ToA_shifted]))
+    return np.c_[tauVect, ACF]
