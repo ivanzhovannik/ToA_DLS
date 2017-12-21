@@ -1,12 +1,13 @@
 '''
-that is a test file for the TTTCU algorithm
+that is a file for the TTTCU algorithm
 '''
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 from tkinter import Tk, filedialog # dialog windows
 
 
-def GenerateLagTimeVect(Tmax, B = 2, lag_time_min = 3e3, ToA_st = 1):
+def GenerateLagTimeVect(Tmax, B=2, lag_time_min=3e3, ToA_st=1):
     '''
     The function generates a lag time vector for a correlation function 
     Tmax = upper correlation time
@@ -26,7 +27,7 @@ def GenerateLagTimeVect(Tmax, B = 2, lag_time_min = 3e3, ToA_st = 1):
     return tauRaw[:j + 1]
 
 
-def TTTCU(dToA, ToA_st = 1, lag_time_min = 3e3):
+def TTTCU(dToA, ToA_st=1, lag_time_min=3e3):
     '''
     This function generates correlation function from a vector of
     single-photon arrival times (ToA) in nanoseconds [ns]
@@ -59,21 +60,90 @@ def TTTCU(dToA, ToA_st = 1, lag_time_min = 3e3):
     return np.c_[tauVect, ACF]
 
 
-def ToA2ACF():
+def ToA2ACF(ToA_st=1, lag_time_min=3e3, sav_gol_param=None):
     '''
     This function takes several ToA files customly chosen from a folder and
     transforms them to ACF via TTTCU algorithm, cuts the ACFs' baselines, and
     averages them (with possible filtration)
+    
+    Inputs:
+        ToA_st - sampling time for ToA (it is usually equal to 1 ns) [ns]
+        lag_time_min - minimal lag time for the correlation function [ns]
+        sav_gol_param - Savitzky-Golay filter parameters dictionary (see below)
+    
+    Outputs: 
+        ACF - output averaged correlation function
+        data - ToAs dictionary
     
     Importantly, ToAs should be stored in a txt file WITHOUT any header.
     
     Savitzki-Golay filter parameters should be stored in a dictionary as
     follows:
         {'poly': polynomial_order, 'window': window_size}
+        
+    The exp ** -1 decay for the ACF of 1 nm particles starts for lag times more
+    than 4 miliseconds. Hence, it is important to find a base lines only for
+    these lag times (more than 4 ms). We use 1 ms to have a safety factor.
     '''
     
+    # open a dialog window and select some text files with ToAs
     root = Tk()
-    root.fileNames = filedialog.askopenfilename(("ToA text files", ".txt"))
+    root.fileNames = filedialog.askopenfilenames(initialdir="/",
+                                                 title="Select file",
+                                                 filetypes=(("ToA text files",
+                                                             "*.txt"),
+        ("all files","*.*"))) # get the file names
+    fileNames = root.fileNames # store the file names
+    root.destroy() # close the browser
     
-    print(root.fileNames)
-    return 1
+    # convert fileNames to an array of file names
+    if type(fileNames) == str:
+        fileNames = list(fileNames)
+    elif type(fileNames) != list and type(fileNames) != tuple:
+        raise TypeError('"fileNames" must be a list of file names or a string')
+    
+    # data storages
+    data = {}
+    ACF = {}
+    ACF_cut = {}
+    ACF_fil_der = {}
+    ACF_base_der = {}
+    ACF_base = {}
+    ACF_res_y = 0
+    
+    # apply the algorithm to each of the files
+    for i, fname in enumerate(fileNames):
+        
+        # read the data from the current file
+        data[i] = pd.read_csv(fname, names=['ToA'])
+        
+        # run the algorithm: the single ACF calculation
+        ACF[i] = TTTCU(data[i]['ToA'].as_matrix(),
+                               ToA_st=ToA_st,
+                               lag_time_min=lag_time_min)
+        
+        # cut the values with lag times less than 3000 ns
+        ACF_cut[i] = ACF[i][np.where(ACF[i][:, 0] > 3000)]
+        
+        # find the first derivatives of the ACF curves
+        ACF_fil_der[i] = np.gradient(ACF_cut[i][:, 1])
+        
+        # compute the base line
+        ACF_base_der[i] = ACF_cut[i][np.argmin(
+            (np.mean(
+                    ACF_cut[i][np.where(np.diff(np.sign(ACF_fil_der[i])) and # average all the time points where derivative changes its sign
+                           ACF_cut[i][:, 0] > 1e6), 0] # baseline cannot be found for lag times less the 1 ms
+                    ) - ACF_cut[i][:, 0]) ** 2 # find the index of the closest point to one was found
+                                                ), 1]
+        
+        # cut the baselines 
+        ACF_base[i] = ACF_cut[i]
+        ACF_base[i][:, 1] = ACF_base[i][:, 1] / ACF_base_der[i] - 1
+        
+        # for the future averaging
+        ACF_res_y += ACF_base[i][:, 1]
+    
+    # average ACF by dividing to the number of files
+    ACF_res = np.c_[ACF_base[0][:, 0], ACF_res_y / (i + 1)]
+        
+    return ACF_res, data
