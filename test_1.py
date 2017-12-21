@@ -143,9 +143,13 @@ def ToA2ACF(ToA_st=1, lag_time_min=3e3, sav_gol_param=None):
         ACF_base[i][:, 1] = ACF_base[i][:, 1] / ACF_base_der[i] - 1
 
         # for the future averaging
-        #ACF_res_y += ACF_base[i][:, 1]
+        if i != 0:
+            indmax = np.min([ACF_res_y.shape[0],ACF_base[i].shape[0]])
+            ACF_res_y = ACF_base[i][:indmax, 1] + ACF_res_y[:indmax]
+        else:
+            ACF_res_y = ACF_base[i][:, 1]
     
     # average ACF by dividing to the number of files
-    #ACF_res = np.c_[ACF_base[0][:, 0], ACF_res_y / (i + 1)]
+    ACF_res = np.c_[ACF_base[0][:, 0], ACF_res_y / (i + 1)]
         
-    return ACF_base, data
+    return ACF_res, data
