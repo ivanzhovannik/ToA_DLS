@@ -56,7 +56,7 @@ def TTTCU(dToA, ToA_st=1, lag_time_min=3e3):
     # calculate the ACF for each of the lag times
     for i, tau in enumerate(tauVect):
         ToA_shifted = ToA + tau
-        ACF[i] = 1 - 0.5 * len(np.unique(np.r_[ToA, ToA_shifted]))
+        ACF[i] = ToA_shape[0] - 0.5 * len(np.unique(np.r_[ToA, ToA_shifted]))
     return np.c_[tauVect, ACF]
 
 
@@ -121,6 +121,8 @@ def ToA2ACF(ToA_st=1, lag_time_min=3e3, sav_gol_param=None):
         ACF[i] = TTTCU(data[i]['ToA'].as_matrix(),
                                ToA_st=ToA_st,
                                lag_time_min=lag_time_min)
+        plt.figure()
+        plt.plot(ACF[i][:, 0], ACF[i][:, 1])
         
         # cut the values with lag times less than 3000 ns
         ACF_cut[i] = ACF[i][np.where(ACF[i][:, 0] > 3000)]
@@ -131,19 +133,19 @@ def ToA2ACF(ToA_st=1, lag_time_min=3e3, sav_gol_param=None):
         # compute the base line
         ACF_base_der[i] = ACF_cut[i][np.argmin(
             (np.mean(
-                    ACF_cut[i][np.where(np.diff(np.sign(ACF_fil_der[i])) and # average all the time points where derivative changes its sign
-                           ACF_cut[i][:, 0] > 1e6), 0] # baseline cannot be found for lag times less the 1 ms
+                    ACF_cut[i][np.where(np.diff(np.sign(ACF_fil_der[i]))) and # average all the time points where derivative changes its sign
+                           np.where(ACF_cut[i][:, 0] > 1e6), 0] # baseline cannot be found for lag times less the 1 ms
                     ) - ACF_cut[i][:, 0]) ** 2 # find the index of the closest point to one was found
                                                 ), 1]
         
         # cut the baselines 
         ACF_base[i] = ACF_cut[i]
         ACF_base[i][:, 1] = ACF_base[i][:, 1] / ACF_base_der[i] - 1
-        
+
         # for the future averaging
-        ACF_res_y += ACF_base[i][:, 1]
+        #ACF_res_y += ACF_base[i][:, 1]
     
     # average ACF by dividing to the number of files
-    ACF_res = np.c_[ACF_base[0][:, 0], ACF_res_y / (i + 1)]
+    #ACF_res = np.c_[ACF_base[0][:, 0], ACF_res_y / (i + 1)]
         
-    return ACF_res, data
+    return ACF_base, data
